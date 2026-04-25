@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pomodoro</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', Consolas, monospace;
+            background: #000;
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2rem;
+            z-index: 10;
+            position: relative;
+        }
+
+        .timer-display {
+            font-size: 200px;
+            font-weight: 100;
+            letter-spacing: 10px;
+            color: #fff;
+            transition: opacity 0.3s ease;
+            line-height: 1;
+        }
+
+        .timer-display.dimmed {
+            opacity: 0.3;
+        }
+
+        .controls {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+        }
+
+        .btn {
+            background: transparent;
+            border: 1px solid #333;
+            color: #fff;
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border-radius: 2px;
+        }
+
+        .btn:hover {
+            border-color: #666;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .btn-primary {
+            border-color: #fff;
+            min-width: 120px;
+        }
+
+        .btn-primary:hover {
+            background: #fff;
+            color: #000;
+        }
+
+        .time-setter {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: #666;
+        }
+
+        .time-setter input {
+            width: 50px;
+            background: transparent;
+            border: 1px solid #333;
+            color: #fff;
+            padding: 0.4rem;
+            text-align: center;
+            font-size: 0.875rem;
+            border-radius: 2px;
+            font-family: inherit;
+        }
+
+        .time-setter input:focus {
+            outline: none;
+            border-color: #666;
+        }
+
+        .time-setter label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .spotify-section {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            width: 320px;
+            height: 80px;
+            border-radius: 8px;
+            overflow: hidden;
+            opacity: 0;
+            transform: translateY(10px) scale(0.95);
+            transition: all 0.3s ease;
+            pointer-events: none;
+            z-index: 100;
+        }
+
+        .spotify-section.visible {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+            pointer-events: auto;
+        }
+
+        .spotify-toggle {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background: transparent;
+            border: 1px solid #333;
+            color: #666;
+            padding: 0.5rem 1rem;
+            font-size: 0.75rem;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border-radius: 2px;
+            z-index: 100;
+        }
+
+        .spotify-toggle:hover {
+            border-color: #666;
+            color: #fff;
+        }
+
+        .spotify-settings {
+            position: fixed;
+            bottom: 6rem;
+            right: 2rem;
+            background: #0a0a0a;
+            border: 1px solid #222;
+            padding: 1rem;
+            border-radius: 4px;
+            opacity: 0;
+            transform: translateY(10px);
+            transition: all 0.3s ease;
+            pointer-events: none;
+            z-index: 101;
+            width: 280px;
+        }
+
+        .spotify-settings.visible {
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: auto;
+        }
+
+        .spotify-settings label {
+            display: block;
+            font-size: 0.7rem;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.5rem;
+        }
+
+        .spotify-settings input {
+            width: 100%;
+            background: #000;
+            border: 1px solid #333;
+            color: #fff;
+            padding: 0.5rem;
+            font-size: 0.75rem;
+            font-family: inherit;
+            border-radius: 2px;
+        }
+
+        .spotify-settings input:focus {
+            outline: none;
+            border-color: #666;
+        }
+
+        .spotify-settings .hint {
+            font-size: 0.65rem;
+            color: #444;
+            margin-top: 0.5rem;
+        }
+
+        .spotify-settings .save-btn {
+            width: 100%;
+            margin-top: 0.75rem;
+            padding: 0.4rem;
+            font-size: 0.75rem;
+        }
+
+        .mode-indicator {
+            position: fixed;
+            top: 2rem;
+            left: 2rem;
+            font-size: 0.75rem;
+            color: #444;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            font-family: inherit;
+        }
+
+        .session-dot {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #222;
+            transition: background 0.3s ease;
+        }
+
+        .dot.completed {
+            background: #444;
+        }
+    </style>
+</head>
+<body>
+    <div class="mode-indicator" id="modeIndicator">Focus</div>
+
+    <div class="container">
+        <div class="timer-display" id="timerDisplay">25:00</div>
+
+        <div class="controls">
+            <button class="btn btn-primary" id="playPauseBtn">Start</button>
+            <button class="btn" id="resetBtn">Reset</button>
+        </div>
+
+        <div class="time-setter">
+            <label>Focus:</label>
+            <input type="number" id="focusTime" value="25" min="1" max="60">
+            <label>Break:</label>
+            <input type="number" id="breakTime" value="5" min="1" max="30">
+        </div>
+
+        <div class="session-dot" id="sessionDots"></div>
+    </div>
+
+    <button class="spotify-toggle" id="spotifyToggle">Spotify</button>
+
+    <div class="spotify-settings" id="spotifySettings">
+        <label>Playlist URL</label>
+        <input type="text" id="playlistUrl" placeholder="https://open.spotify.com/playlist/...">
+        <div class="hint">Paste any Spotify playlist URL</div>
+        <button class="btn save-btn" id="savePlaylistBtn">Save</button>
+    </div>
+
+    <div class="spotify-section" id="spotifySection">
+        <iframe
+            id="spotifyFrame"
+            src=""
+            width="100%"
+            height="80"
+            frameBorder="0"
+            allowfullscreen=""
+            allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+            loading="lazy"
+            style="border-radius: 8px;">
+        </iframe>
+    </div>
+
+    <script>
+        const timerDisplay = document.getElementById('timerDisplay');
+        const playPauseBtn = document.getElementById('playPauseBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const focusTimeInput = document.getElementById('focusTime');
+        const breakTimeInput = document.getElementById('breakTime');
+        const modeIndicator = document.getElementById('modeIndicator');
+        const spotifyToggle = document.getElementById('spotifyToggle');
+        const spotifySection = document.getElementById('spotifySection');
+        const spotifySettings = document.getElementById('spotifySettings');
+        const playlistUrlInput = document.getElementById('playlistUrl');
+        const savePlaylistBtn = document.getElementById('savePlaylistBtn');
+        const spotifyFrame = document.getElementById('spotifyFrame');
+        const sessionDots = document.getElementById('sessionDots');
+
+        let timeLeft = 25 * 60;
+        let totalTime = 25 * 60;
+        let isRunning = false;
+        let isFocusMode = true;
+        let completedSessions = 0;
+        let timerId = null;
+
+        function updateDisplay() {
+            const mins = Math.floor(timeLeft / 60);
+            const secs = timeLeft % 60;
+            timerDisplay.textContent =
+                mins.toString().padStart(2, '0') + ':' + secs.toString().padStart(2, '0');
+        }
+
+        function togglePlay() {
+            if (isRunning) {
+                pause();
+            } else {
+                start();
+            }
+        }
+
+        function start() {
+            if (isRunning) return;
+            isRunning = true;
+            playPauseBtn.textContent = 'Pause';
+            timerDisplay.classList.remove('dimmed');
+
+            timerId = setInterval(() => {
+                timeLeft--;
+                updateDisplay();
+
+                if (timeLeft <= 0) {
+                    completeSession();
+                }
+            }, 1000);
+        }
+
+        function pause() {
+            isRunning = false;
+            playPauseBtn.textContent = 'Start';
+            timerDisplay.classList.add('dimmed');
+            clearInterval(timerId);
+        }
+
+        function reset() {
+            pause();
+            timeLeft = isFocusMode ?
+                parseInt(focusTimeInput.value) * 60 :
+                parseInt(breakTimeInput.value) * 60;
+            totalTime = timeLeft;
+            updateDisplay();
+        }
+
+        function completeSession() {
+            pause();
+
+            if (isFocusMode) {
+                completedSessions++;
+                updateSessionDots();
+                isFocusMode = false;
+                modeIndicator.textContent = 'Break';
+                timeLeft = parseInt(breakTimeInput.value) * 60;
+            } else {
+                isFocusMode = true;
+                modeIndicator.textContent = 'Focus';
+                timeLeft = parseInt(focusTimeInput.value) * 60;
+            }
+
+            totalTime = timeLeft;
+            updateDisplay();
+            playPauseBtn.textContent = 'Start';
+
+            setTimeout(() => {
+                if (!isRunning) {
+                    start();
+                }
+            }, 2000);
+        }
+
+        function updateSessionDots() {
+            const dots = sessionDots.children;
+            for (let i = 0; i < dots.length; i++) {
+                if (i < completedSessions) {
+                    dots[i].classList.add('completed');
+                }
+            }
+            if (completedSessions > dots.length) {
+                addSessionDot();
+            }
+        }
+
+        function addSessionDot() {
+            const dot = document.createElement('div');
+            dot.className = 'dot completed';
+            sessionDots.appendChild(dot);
+        }
+
+        function initSessionDots() {
+            for (let i = 0; i < 8; i++) {
+                const dot = document.createElement('div');
+                dot.className = 'dot';
+                sessionDots.appendChild(dot);
+            }
+        }
+
+        function extractPlaylistId(url) {
+            const match = url.match(/playlist\/([a-zA-Z0-9]+)/);
+            return match ? match[1] : null;
+        }
+
+        function updateSpotifyFrame(url) {
+            const playlistId = extractPlaylistId(url);
+            if (playlistId) {
+                spotifyFrame.src = `https://open.spotify.com/embed/playlist/${playlistId}?utm_source=generator&theme=0`;
+            }
+        }
+
+        const defaultPlaylist = 'https://open.spotify.com/playlist/4aeAdr5ELU7piFGb66EoSK';
+        const savedPlaylist = localStorage.getItem('spotifyPlaylist');
+        const playlistToUse = savedPlaylist || defaultPlaylist;
+        playlistUrlInput.value = playlistToUse;
+        updateSpotifyFrame(playlistToUse);
+
+        let settingsOpen = false;
+
+        spotifyToggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (settingsOpen) {
+                spotifySettings.classList.remove('visible');
+                spotifySection.classList.add('visible');
+                spotifyToggle.textContent = 'Spotify';
+                settingsOpen = false;
+            } else {
+                spotifySection.classList.remove('visible');
+                spotifySettings.classList.add('visible');
+                spotifyToggle.textContent = 'Back';
+                settingsOpen = true;
+            }
+        });
+
+        savePlaylistBtn.addEventListener('click', () => {
+            const url = playlistUrlInput.value.trim();
+            const playlistId = extractPlaylistId(url);
+
+            if (playlistId) {
+                localStorage.setItem('spotifyPlaylist', url);
+                updateSpotifyFrame(url);
+                spotifySettings.classList.remove('visible');
+                spotifySection.classList.add('visible');
+                spotifyToggle.textContent = 'Hide';
+                settingsOpen = false;
+            } else {
+                playlistUrlInput.value = 'Invalid URL';
+                setTimeout(() => {
+                    playlistUrlInput.value = savedPlaylist || defaultPlaylist;
+                }, 1500);
+            }
+        });
+
+        document.addEventListener('click', (e) => {
+            if (settingsOpen && !spotifySettings.contains(e.target) && e.target !== spotifyToggle) {
+                spotifySettings.classList.remove('visible');
+                spotifySection.classList.add('visible');
+                spotifyToggle.textContent = 'Spotify';
+                settingsOpen = false;
+            }
+        });
+
+        playPauseBtn.addEventListener('click', togglePlay);
+        resetBtn.addEventListener('click', reset);
+
+        focusTimeInput.addEventListener('change', () => {
+            if (isFocusMode && !isRunning) {
+                timeLeft = parseInt(focusTimeInput.value) * 60;
+                totalTime = timeLeft;
+                updateDisplay();
+            }
+        });
+
+        breakTimeInput.addEventListener('change', () => {
+            if (!isFocusMode && !isRunning) {
+                timeLeft = parseInt(breakTimeInput.value) * 60;
+                totalTime = timeLeft;
+                updateDisplay();
+            }
+        });
+
+        initSessionDots();
+        updateDisplay();
+    </script>
+</body>
+</html>
